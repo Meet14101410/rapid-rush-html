@@ -1,0 +1,33 @@
+const c = document.getElementById("game"), x = c.getContext("2d");
+const W = c.width, H = c.height, G = H - 56;
+let run = false, spd = 6, scr = 0, obs = [], ply = {x:90,y:G-40,w:36,h:40,vy:0,gr:true};
+
+function jump(){ if(ply.gr){ ply.vy = -12; ply.gr = false; } }
+function start(){ run = true; scr = 0; obs=[]; spd=6; ply.y=G-40; loop(); }
+document.addEventListener("keydown",e=>{
+  if([" ","ArrowUp","w"].includes(e.key)) jump();
+  if(["Enter","r"].includes(e.key)&&!run) start();
+});
+c.addEventListener("pointerdown", jump);
+
+function loop(){
+  if(!run) return;
+  update(); draw();
+  requestAnimationFrame(loop);
+}
+function update(){
+  spd += 0.002; scr += 0.1;
+  ply.vy += 0.75; ply.y += ply.vy;
+  if(ply.y>=G-ply.h){ply.y=G-ply.h; ply.vy=0; ply.gr=true;}
+  if(Math.random()<0.02) obs.push({x:W,y:G-28,w:24,h:28});
+  obs.forEach(o=>o.x-=spd);
+  obs = obs.filter(o=>o.x+o.w>0);
+  for(const o of obs) if(coll(ply,o)) run=false;
+}
+function coll(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function draw(){
+  x.clearRect(0,0,W,H);
+  x.fillStyle="#233"; x.fillRect(0,G,W,3);
+  x.fillStyle="#69e1ff"; x.fillRect(ply.x,ply.y,ply.w,ply.h);
+  x.fillStyle="#7bff9e"; obs.forEach(o=>x.fillRect(o.x,o.y,o.w,o.h));
+}
