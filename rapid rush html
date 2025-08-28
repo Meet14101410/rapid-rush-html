@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rapid Rush</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --bg2:#10192e;
+    --fg:#e6edf7;
+    --accent:#69e1ff;
+    --accent2:#7bff9e;
+    --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 70% -10%, #1b2a52 0%, var(--bg) 55%) fixed;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{display:grid;place-items:center;height:100%;padding:18px}
+  .panel{
+    width:min(950px, 96vw);
+    border-radius:20px;
+    padding:14px 16px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .hud{
+    display:flex;gap:10px;align-items:center;justify-content:space-between;
+    margin-bottom:10px;padding:6px 10px;border-radius:14px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .title{font-weight:800;letter-spacing:0.5px}
+  .badge{
+    font-weight:700;
+    padding:6px 10px;border-radius:999px;
+    background:linear-gradient(90deg, var(--accent), var(--accent2));
+    color:#061018;box-shadow:0 0 24px rgba(105,225,255,0.3);
+  }
+  .stats{display:flex;gap:12px;font-variant-numeric:tabular-nums}
+  .stat{opacity:0.9}
+  canvas{
+    width:100%;height:auto;display:block;border-radius:18px;
+    background:
+      linear-gradient(180deg, #0b172e 0%, #0a1426 40%, #09101f 100%);
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .overlay{
+    position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+  }
+  .card{
+    text-align:center;padding:22px 20px;border-radius:16px;
+    background:rgba(8,14,28,0.78);backdrop-filter: blur(8px);
+    border:1px solid rgba(255,255,255,0.1);
+    box-shadow:0 12px 40px rgba(0,0,0,0.5);
+    pointer-events:auto;
+  }
+  .card h1{margin:0 0 6px;font-size:28px}
+  .card p{margin:6px 0 0;opacity:0.9}
+  .btn{
+    margin-top:14px;display:inline-block;padding:10px 16px;border-radius:12px;
+    font-weight:700;border:none;cursor:pointer;
+    background:linear-gradient(90deg, var(--accent) , var(--accent2));
+    color:#061018;box-shadow:0 8px 24px rgba(105,225,255,0.25);
+  }
+  .help{font-size:12px;opacity:0.7;margin-top:6px}
+  .footer{margin-top:8px;font-size:12px;opacity:0.6;text-align:right}
+  .bar{
+    position:relative;height:3px;border-radius:999px;overflow:hidden;margin-top:6px;background:#26314d;
+  }
+  .bar > i{position:absolute;left:0;top:0;bottom:0;width:30%;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:shine 2s linear infinite}
+  @keyframes shine{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+  @media (max-width:520px){
+    .title{font-size:14px}
+    .badge{font-size:12px}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="hud">
+        <div class="title">🏁 <span style="opacity:.8">Rapid</span> <span class="badge">RUSH</span></div>
+        <div class="stats">
+          <div class="stat">Score: <span id="score">0</span></div>
+          <div class="stat">Best: <span id="best">0</span></div>
+          <div class="stat">Speed: <span id="speed">1.0x</span></div>
+        </div>
+      </div>
+      <div style="position:relative">
+        <canvas id="game" width="900" height="320" aria-label="Rapid Rush game canvas"></canvas>
+        <div id="menu" class="overlay" role="dialog" aria-modal="true">
+          <div class="card">
+            <h1>Tap • Click • Space to Jump</h1>
+            <div class="bar"><i></i></div>
+            <p>Avoid obstacles. Survive as speed ramps up.</p>
+            <p class="help">Controls: Space / W / ↑ or Tap • Restart: Enter / R</p>
+            <button class="btn" id="startBtn">Start Run</button>
+          </div>
+        </div>
+        <div id="gameover" class="overlay" style="display:none">
+          <div class="card" style="border-color:rgba(255,107,107,.35)">
+            <h1 style="color:var(--danger)">Game Over</h1>
+            <p>Score: <span id="finalScore">0</span> • Best: <span id="finalBest">0</span></p>
+            <button class="btn" id="againBtn">Run Again</button>
+            <div class="help">Tip: Jump a bit <em>earlier</em> as speed increases.</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer">Made with ♥ — single-file HTML • No assets</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const hudScore = document.getElementById('score');
+  const hudBest  = document.getElementById('best');
+  const hudSpeed = document.getElementById('speed');
+  const menuEl = document.getElementById('menu');
+  const overEl = document.getElementById('gameover');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const finalScore = document.getElementById('finalScore');
+  const finalBest  = document.getElementById('finalBest');
+
+  // --- GAME STATE ---
+  const W = canvas.width, H = canvas.height;
+  const GROUND_Y = H - 56;
+  const gravity = 0.75;
+  const jumpVel = -12.5;
+  const world = {
+    t: 0,
+    running: false,
+    speed: 6,          // base pixels per frame
+    speedMul: 1.0,     // displayed multiplier
+    spawnTimer: 0,
+    score: 0,
+    best: Number(localStorage.getItem('rapid_rush_best') || 0),
+    clouds: [], hills: []
+  };
+
+  // player
+  const player = {
+    x: 90,
+    y: GROUND_Y - 40,
+    w: 36,
+    h: 40,
+    vy: 0,
+    grounded: true,
+    blink: 0
+  };
+
+  // obstacles
+  const obs = [];
+
+  function reset() {
+    world.t = 0;
+    world.speed = 6;
+    world.speedMul = 1.0;
+    world.spawnTimer = 0;
+    world.score = 0;
+    obs.length = 0;
+    player.y = GROUND_Y - player.h;
+    player.vy = 0;
